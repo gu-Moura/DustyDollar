@@ -2,12 +2,14 @@ version: "3.0"
 
 services:
   backend:
-    image: debian:bullseye-slim
-    environment:
-      ENVIRONMENT: dev
-    entrypoint: /code/entrypoint.sh
+    build:
+      context: .
+    image: dustydollar:latest
+    command: sleep 100000
+    env_file:
+      - .env.dev
     ports:
-      - "80:5000"
+      - "5000:5000"
     volumes:
       - .:/code
     networks:
@@ -15,11 +17,8 @@ services:
 
   database:
     image: mysql:8.0-debian
-    environment:
-      MYSQL_ROOT_PASSWORD: toor
-      MYSQL_DATABASE: DustyDollar
-      MYSQL_USER: sherrif
-      MYSQL_PASSWORD: maverick
+    env_file:
+      - .env.dev
     ports:
       - "3306:3306"
     volumes:
