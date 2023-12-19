@@ -9,9 +9,8 @@ from sqlalchemy.orm import sessionmaker
 from config import db_url, bcrypt
 from models.entities import Account, Transaction, Person
 
-from src.config import bcrypt
-from src.exceptions import InvalidPasswordException
-from src.services.ports.db_interface import DBInterface
+from exceptions import InvalidPasswordException
+from services.ports.db_interface import DBInterface
 
 engine = create_engine(db_url)
 metadata = MetaData()

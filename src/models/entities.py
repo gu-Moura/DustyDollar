@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from src.exceptions import InvalidOperationException
+from exceptions import InvalidOperationException
 
 
 class AccountType(Enum):

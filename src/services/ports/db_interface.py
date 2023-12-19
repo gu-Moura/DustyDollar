@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union, List, Optional
 
-from src.models.entities import Account, Person, Transaction
+from models.entities import Account, Person, Transaction
 
 
 class DBInterface(ABC):
