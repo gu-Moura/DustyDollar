@@ -5,7 +5,9 @@ services:
     build:
       context: .
     image: dustydollar:latest
-    command: sleep 100000
+    depends_on:
+      - database
+    restart: on-failure
     env_file:
       - .env.dev
     ports:

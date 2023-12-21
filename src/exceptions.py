@@ -1,7 +1,3 @@
-class InvalidPasswordException(Exception):
-    pass
-
-
 class InvalidOperationException(Exception):
     pass
 

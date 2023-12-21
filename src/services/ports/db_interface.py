@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Union, List, Optional
 
-from models.entities import Account, Person, Transaction
+from src.models.entities import Account, Person, Transaction
 
 
 class DBInterface(ABC):
@@ -46,5 +46,5 @@ class DBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_account_with_password(self, account_id: int, password: str) -> Optional[Account]:
+    def get_account(self, account_id: int) -> Optional[Account]:
         raise NotImplementedError

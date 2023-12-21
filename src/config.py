@@ -4,8 +4,8 @@ from flask_sqlalchemy import SQLAlchemy
 
 from flask_jwt_extended import JWTManager
 from flask_bcrypt import Bcrypt
-from env_variables import DB_NAME, DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, JWT_SECRET_KEY
-
+from src.env_variables import DB_NAME, DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, JWT_SECRET_KEY
+from src.services.db_service import SQLAlchemyDBService
 
 db_url = f'mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}'
 
@@ -19,3 +19,4 @@ migrate = Migrate(app, db)
 jwt = JWTManager(app)
 bcrypt = Bcrypt(app)
 
+db_interface = SQLAlchemyDBService(db_url=db_url)

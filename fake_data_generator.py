@@ -1,11 +1,11 @@
-from functools import wraps
-
 from faker import Faker
 import random
-from models.entities import Person, Account, Transaction
-import services.db_service as sqla
+from src.models.entities import Person, Account, Transaction
+from src.services.db_service import SQLAlchemyDBService
+from src.config import db_url
 
 fake = Faker("pt_BR")
+sqla = SQLAlchemyDBService(db_url)
 
 
 def generate_transaction(acc_id: int, transaction_id: int) -> Transaction:
@@ -41,7 +41,7 @@ def generate_person(pid: int) -> Person:
     return Person.from_dict(person)
 
 
-def populate_database():
+def populate_database_first_time_only():
     pessoas = [generate_person(i + 1) for i in range(125)]
     contas = [generate_conta() for _ in range(250)]
     transacoes = [generate_transaction(acc_id=-1, transaction_id=i) for i in range(5000)]
@@ -61,4 +61,4 @@ def populate_database():
 
 
 if __name__ == '__main__':
-    populate_database()
+    populate_database_first_time_only()
