@@ -1,4 +1,4 @@
-from config import db
+from src.config import db
 
 
 class Conta(db.Model):

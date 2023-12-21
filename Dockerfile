@@ -8,6 +8,6 @@ RUN pip3 install --no-cache-dir -r requirements.txt
 
 COPY . /code
 
-WORKDIR /code/src
+WORKDIR /code
 
 CMD ["python3", "start-server.py"]

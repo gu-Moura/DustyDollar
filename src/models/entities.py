@@ -3,7 +3,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Optional
 
-from exceptions import InvalidOperationException
+from src.exceptions import InvalidOperationException
 
 
 class AccountType(Enum):
@@ -37,7 +37,7 @@ class Person:
             id_pessoa=self.id_pessoa,
             nome=self.nome,
             cpf=self.cpf,
-            data_nascimento=self.data_nascimento
+            data_nascimento=self.data_nascimento.strftime('%Y-%m-%d')
         )
 
 
@@ -96,7 +96,7 @@ class Account:
             limite_saque_diario=self.limite_saque_diario,
             flag_ativo=self.flag_ativo,
             tipo_conta=self.tipo_conta.value,
-            data_criacao=self.data_criacao
+            data_criacao=self.data_criacao.strftime("%Y-%m-%d")
         )
 
 

@@ -1,9 +1,7 @@
-from functools import wraps
-
 from faker import Faker
 import random
-from models.entities import Person, Account, Transaction
-import services.db_service as sqla
+from src.models.entities import Person, Account, Transaction
+import src.services.db_service as sqla
 
 fake = Faker("pt_BR")
 
