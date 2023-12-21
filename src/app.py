@@ -6,7 +6,7 @@ from src.models.entities import Account, OperationDTO, AccountStatusDTO
 from src.app_middleware import check_if_account_is_active
 from src.exceptions import DatabaseWritingException
 
-from src.db_models import Conta, Transacao, Pessoa
+from src.sqlalchemy_models import Conta, Transacao, Pessoa
 
 
 @app.route('/account/login', methods=['POST'])
