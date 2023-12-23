@@ -1,12 +1,13 @@
 from flask import request, jsonify
 from flask_jwt_extended import create_access_token, jwt_required
 
-from src.config import app, bcrypt, db_interface
-from src.models.entities import Account, OperationDTO, AccountStatusDTO
 from src.app_middleware import check_if_account_is_active
-from src.exceptions import DatabaseWritingException
+from src.config import app, bcrypt, db_interface
+from src.exceptions import DepositOperationException, AccountCreationException, \
+    InvalidCredentialsException, WithdrawalOperationException, AccountStatusChangeException
+from src.models.entities import Account, OperationDTO, AccountStatusDTO
 
-from src.sqlalchemy_models import Conta, Transacao, Pessoa
+from src.sqlalchemy_models import Conta, Transacao, Pessoa  # for DB migration to work
 
 
 @app.route('/account/login', methods=['POST'])
@@ -20,7 +21,7 @@ def create_token():
                 'status': 'error',
                 'message': 'Invalid account ID and/or password! Please try again.'
             }), 400
-    except Exception:
+    except InvalidCredentialsException:
         return jsonify({
             'status': 'error',
             'message': 'Something went wrong while retrieving account! Please try again later.'
@@ -40,8 +41,13 @@ def acc_creation():
     try:
         new_account = Account.from_dict(data)
         password = bcrypt.generate_password_hash(str(data['password'])).decode('utf-8')
-        db_interface.create_new_account(new_account, password)
-    except DatabaseWritingException:
+        created_account = db_interface.create_new_account(new_account, password)
+    except (KeyError, TypeError):
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid data format! Please check the entered data and try again!'
+        }), 400
+    except AccountCreationException:
         return jsonify({
             'status': 'error',
             'message': 'Account could not be created! Please check the entered data and try again!'
@@ -49,7 +55,8 @@ def acc_creation():
 
     return jsonify({
         'status': 'success',
-        'message': 'Account was successfully created!'
+        'message': 'Account was successfully created!',
+        'account_data': created_account.to_dict(human_friendly=True)
     }), 200
 
 
@@ -62,18 +69,15 @@ def acc_deposit():
     deposit_data = OperationDTO.from_dict(data)
     try:
         db_interface.deposit_into_account(deposit_data.account_id, deposit_data.amount)
-        db_interface.make_transaction(deposit_data.account_id, float(deposit_data.amount))
-    except Exception:
+    except DepositOperationException:
         return jsonify({
             'status': 'error',
             'message': f'Could not deposit the amount of {deposit_data.amount} into account {deposit_data.account_id}.'
         }), 400
-
     return jsonify({
         'status': 'success',
         'message': f'Amount of {deposit_data.amount} was successfully deposited into account {deposit_data.account_id}.'
-    }
-    )
+    }), 200
 
 
 @app.route('/account/withdraw', methods=["POST"])
@@ -93,8 +97,7 @@ def acc_withdraw():
             }), 423
 
         db_interface.withdraw_from_account(withdrawal_data.account_id, withdrawal_data.amount)
-        db_interface.make_transaction(withdrawal_data.account_id, -float(withdrawal_data.amount))
-    except Exception:
+    except WithdrawalOperationException:
         return jsonify({
             'status': 'error',
             'message': f'Could not withdraw the amount of {withdrawal_data.amount} '
@@ -114,7 +117,7 @@ def acc_block():
     data = AccountStatusDTO.from_dict(request.get_json())
     try:
         db_interface.change_account_active_status(data.account_id, data.account_active)
-    except Exception:
+    except AccountStatusChangeException:
         return jsonify({
             'status': 'error',
             'message': f"Couldn't {'block' if not data.account_active else 'unblock'} account {data.account_id}."
@@ -169,3 +172,27 @@ def acc_statement():
         "message": f"The bank statement was successfully extracted for account {account_id}",
         "bank_statement": statement
     })
+
+
+@app.errorhandler(404)
+def resource_not_found(e):
+    return jsonify({
+        'status': 'error',
+        'message': str(e)
+    }), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return jsonify({
+        'status': 'error',
+        'message': str(e)
+    }), 500
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({
+        'status': 'error',
+        'message': str(e)
+    }), 400
