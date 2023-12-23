@@ -169,3 +169,65 @@ def acc_statement():
         "message": f"The bank statement was successfully extracted for account {account_id}",
         "bank_statement": statement
     })
+
+
+@app.errorhandler(404)
+def resource_not_found(e):
+    return jsonify({
+        'status': 'error',
+        'message': str(e)
+    }), 404
+
+
+@app.errorhandler(500)
+def internal_server_error(e):
+    return jsonify({
+        'status': 'error',
+        'message': str(e)
+    }), 500
+
+
+@app.errorhandler(400)
+def bad_request(e):
+    return jsonify({
+        'status': 'error',
+        'message': str(e)
+    }), 400
+
+
+@app.route('/account/transfer', methods=["POST"])
+@jwt_required()
+@check_if_account_is_active(db_interface=db_interface)
+def acc_transfer():
+    # What is the JSON object which this route expects?
+    # {
+    #     "account_id": 1,
+    #     "destination_account_id": 2,
+    #     "amount": 100.0
+    # }
+    data = request.get_json()
+    data['operation_type'] = 'Transfer'
+
+    transfer_data = OperationDTO.from_dict(data)
+    try:
+        if db_interface.reached_withdrawal_limit(transfer_data.account_id, transfer_data.amount):
+            return jsonify({
+                'status': 'error',
+                'message': "You are trying to transfer an amount the surpasses your "
+                           f"daily limit for the account {transfer_data.account_id}."
+            }), 423
+
+        db_interface.withdraw_from_account(transfer_data.account_id, transfer_data.amount)
+        db_interface.deposit_into_account(transfer_data.destination_account_id, transfer_data.amount)
+    except Exception:
+        return jsonify({
+            'status': 'error',
+            'message': f'Could not transfer the amount of {transfer_data.amount} '
+                       f'from account {transfer_data.account_id} to account {transfer_data.destination_account_id}.'
+        }), 400
+
+    return jsonify({
+        'status': 'success',
+        'message': f'Amount of {transfer_data.amount} was successfully transferred from '
+                   f'account {transfer_data.account_id} to account {transfer_data.destination_account_id}.'
+    })
