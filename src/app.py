@@ -4,7 +4,7 @@ from flask_jwt_extended import create_access_token, jwt_required
 from src.app_middleware import check_if_account_is_active
 from src.config import app, bcrypt, db_interface
 from src.exceptions import DepositOperationException, AccountCreationException, \
-    InvalidCredentialsException, WithdrawalOperationException, AccountStatusChangeException
+    AccountRetrievalException, WithdrawalOperationException, AccountStatusChangeException, InvalidCredentialsException
 from src.models.entities import Account, OperationDTO, AccountStatusDTO
 
 from src.sqlalchemy_models import Conta, Transacao, Pessoa  # for DB migration to work
@@ -17,15 +17,17 @@ def create_token():
     try:
         account, account_password = db_interface.get_account(account_id)
         if not bcrypt.check_password_hash(account_password, password) or account is None:
-            return jsonify({
-                'status': 'error',
-                'message': 'Invalid account ID and/or password! Please try again.'
-            }), 400
-    except InvalidCredentialsException:
+            raise InvalidCredentialsException
+    except AccountRetrievalException:
         return jsonify({
             'status': 'error',
             'message': 'Something went wrong while retrieving account! Please try again later.'
         }), 500
+    except InvalidCredentialsException:
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid account ID and/or password! Please try again.'
+        }), 400
 
     access_token = create_access_token(identity=account.id_conta, additional_claims={
         'person_id': account.id_pessoa,
@@ -165,7 +167,7 @@ def acc_statement():
             'message': 'No account_id provided.'
         }), 400
 
-    statement = [transaction.to_dict() for transaction in db_interface.get_extract_from_account(account_id)]
+    statement = [transaction.to_dict() for transaction in db_interface.get_statement_from_account(account_id)]
 
     return jsonify({
         "status": "success",

@@ -24,7 +24,7 @@ class MockDBInterface(DBInterface):
     def change_account_active_status(self, account_id: int, active: bool):
         return None
 
-    def get_extract_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
+    def get_statement_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
         rows = [
             (1, account_id, 103.52, datetime.strptime('2023-12-12', '%Y-%m-%d')),
             (2, account_id, 128.98, datetime.strptime('2023-12-15', '%Y-%m-%d'))

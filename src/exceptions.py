@@ -30,5 +30,25 @@ class InvalidCredentialsException(Exception):
     pass
 
 
+class AccountRetrievalException(Exception):
+    pass
+
+
 class PersonCreationException(Exception):
+    pass
+
+
+class GetBalanceException(Exception):
+    pass
+
+
+class GetStatementException(Exception):
+    pass
+
+
+class AccountStatusCheckException(Exception):
+    pass
+
+
+class WithdrawalLimitCheckException(Exception):
     pass

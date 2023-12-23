@@ -31,7 +31,7 @@ class DBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_extract_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
+    def get_statement_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
         raise NotImplementedError
 
     @abstractmethod
