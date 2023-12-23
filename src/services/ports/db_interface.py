@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import Union, List, Optional
 
 from src.models.entities import Account, Person, Transaction
@@ -34,7 +35,7 @@ class DBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def make_transaction(self, account_id: int, amount: float) -> Transaction:
+    def _make_transaction(self, account_id: int, amount: float, transaction_date: date) -> Transaction:
         raise NotImplementedError
 
     @abstractmethod

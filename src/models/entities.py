@@ -88,14 +88,14 @@ class Account:
             data_criacao=datetime.strptime(data.get("data_criacao"), '%Y-%m-%d').date()
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self, human_friendly: bool = False) -> dict:
         return dict(
             id_conta=self.id_conta,
             id_pessoa=self.id_pessoa,
             saldo=self.saldo,
             limite_saque_diario=self.limite_saque_diario,
             flag_ativo=self.flag_ativo,
-            tipo_conta=self.tipo_conta.value,
+            tipo_conta=self.tipo_conta.name if human_friendly else self.tipo_conta.value,
             data_criacao=self.data_criacao.strftime("%Y-%m-%d")
         )
 

@@ -36,7 +36,7 @@ class MockDBInterface(DBInterface):
             data_transacao=row[3].strftime('%Y-%m-%d')
         )) for row in rows]
 
-    def make_transaction(self, account_id: int, amount: float) -> Transaction:
+    def _make_transaction(self, account_id: int, amount: float) -> Transaction:
         transaction = {
             "id_conta": account_id,
             "valor": amount,
