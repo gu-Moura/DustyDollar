@@ -136,14 +136,15 @@ class SQLAlchemyDBService(DBInterface):
     def get_balance(self, account_id: int) -> Union[float, None]:
         session = self.Session()
         try:
-            saldo = session.query(self.conta_table.c.saldo).filter_by(id_conta=account_id).scalar()
+            saldo = (session.query(self.conta_table.c.saldo)
+                     .filter_by(id_conta=account_id).scalar())
             return saldo if saldo is not None else None
         except sqlalchemy.exc.SQLAlchemyError as e:
             raise GetBalanceException(e)
         finally:
             session.close()
 
-    def change_account_active_status(self, account_id: int, active: bool):
+    def set_account_active_status(self, account_id: int, active: bool) -> bool:
         session = self.Session()
         try:
             session.execute(
@@ -152,6 +153,7 @@ class SQLAlchemyDBService(DBInterface):
                 .values(flag_ativo=active)
             )
             session.commit()
+            return self.check_account_active(account_id)
         except sqlalchemy.exc.SQLAlchemyError as e:
             raise AccountStatusChangeException(e)
         finally:
@@ -198,11 +200,11 @@ class SQLAlchemyDBService(DBInterface):
         }
         return Transaction.from_dict(completed_transaction)
 
-    def check_account_active(self, account_id: int) -> Optional[bool]:
+    def check_account_active(self, account_id: int) -> bool:
         session = self.Session()
         try:
             account_active = session.query(self.conta_table.c.flag_ativo).filter_by(id_conta=account_id).scalar()
-            return account_active if account_active is not None else None
+            return bool(account_active)
         except sqlalchemy.exc.SQLAlchemyError as e:
             raise AccountStatusCheckException(e)
         finally:

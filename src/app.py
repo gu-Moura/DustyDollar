@@ -53,7 +53,7 @@ def acc_creation():
         return jsonify({
             'status': 'error',
             'message': 'Account could not be created! Please check the entered data and try again!'
-        }), 400
+        }), 500
 
     return jsonify({
         'status': 'success',
@@ -113,21 +113,23 @@ def acc_withdraw():
     })
 
 
-@app.route('/account/block', methods=["PATCH"])
+@app.route('/account/active', methods=["PATCH"])
 @jwt_required()
-def acc_block():
+def acc_active_status():
     data = AccountStatusDTO.from_dict(request.get_json())
     try:
-        db_interface.change_account_active_status(data.account_id, data.account_active)
+        new_status = db_interface.set_account_active_status(data.account_id, data.active)
+        if data.active != new_status:
+            raise AccountStatusChangeException
     except AccountStatusChangeException:
         return jsonify({
             'status': 'error',
-            'message': f"Couldn't {'block' if not data.account_active else 'unblock'} account {data.account_id}."
+            'message': f"Couldn't {'block' if not data.active else 'unblock'} account {data.account_id}."
         }), 400
     return jsonify({
         'status': 'success',
         'message': f"Account {data.account_id} was successfully "
-                   f"{'blocked' if not data.account_active else 'unblocked'} account {data.account_id}."
+                   f"{'blocked' if not new_status else 'unblocked'}."
     })
 
 

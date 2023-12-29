@@ -280,7 +280,7 @@ class TestEntities(unittest.TestCase):
         account_status_dto = entities.AccountStatusDTO.from_dict(account_status_dict)
         self.assertEqual(type(account_status_dto), entities.AccountStatusDTO)
         self.assertEqual(account_status_dto.account_id, 1)
-        self.assertEqual(account_status_dto.account_active, True)
+        self.assertEqual(account_status_dto.active, True)
 
     def test_account_status_dto_to_dict(self):
         account_status_dict = {

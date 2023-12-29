@@ -127,18 +127,18 @@ class OperationDTO:
 @dataclass
 class AccountStatusDTO:
     account_id: int
-    account_active: bool
+    active: bool
 
     @staticmethod
     def from_dict(data: dict):
         return AccountStatusDTO(
             account_id=int(data.get('account_id')),
-            account_active=bool(data.get('account_active'))
+            active=bool(data.get('active'))
         )
 
     def to_dict(self):
         return dict(
             account_id=self.account_id,
-            account_active=self.account_active
+            active=self.active
         )
 

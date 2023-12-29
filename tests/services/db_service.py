@@ -142,7 +142,7 @@ class MyTestCase(unittest.TestCase):
 
         self.mock_sqla.conta_table.c.id_conta = account_id
 
-        self.mock_sqla.change_account_active_status(account_id, active)
+        self.mock_sqla.set_account_active_status(account_id, active)
 
         # Asserts
         self.mock_sqla.conta_table.update.return_value.where.assert_called_once_with(True)

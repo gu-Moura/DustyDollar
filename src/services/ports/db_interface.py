@@ -27,7 +27,7 @@ class DBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def change_account_active_status(self, account_id: int, active: bool):
+    def set_account_active_status(self, account_id: int, active: bool):
         raise NotImplementedError
 
     @abstractmethod
