@@ -4,7 +4,8 @@ from flask_jwt_extended import create_access_token, jwt_required
 from src.app_middleware import check_if_account_is_active
 from src.config import app, bcrypt, db_interface
 from src.exceptions import DepositOperationException, AccountCreationException, \
-    AccountRetrievalException, WithdrawalOperationException, AccountStatusChangeException, InvalidCredentialsException
+    AccountRetrievalException, WithdrawalOperationException, AccountStatusChangeException, InvalidCredentialsException, \
+    GetBalanceException, GetStatementException
 from src.models.entities import Account, OperationDTO, AccountStatusDTO
 
 from src.sqlalchemy_models import Conta, Transacao, Pessoa  # for DB migration to work
@@ -143,17 +144,16 @@ def acc_balance():
             'status': 'error',
             'message': 'No account_id provided.'
         }), 400
-
-    balance = db_interface.get_balance(account_id)
-    if balance is None:
+    try:
+        balance = db_interface.get_balance(account_id)
+    except GetBalanceException:
         return jsonify({
             'status': 'error',
-            'message': f'No account found with id {account_id}.'
-        }), 404
-
+            'message': f"Something went wrong while retrieving balance for account {account_id}."
+        }), 500
     return jsonify({
         'status': 'success',
-        'message': f"Balance of account {account_id} was retrieved successfully",
+        'message': f"Balance of account {account_id} was retrieved successfully.",
         'balance': balance
     }), 200
 
@@ -168,12 +168,17 @@ def acc_statement():
             'status': 'error',
             'message': 'No account_id provided.'
         }), 400
-
-    statement = [transaction.to_dict() for transaction in db_interface.get_statement_from_account(account_id)]
-
+    try:
+        transaction_list = db_interface.get_statement_from_account(account_id)
+        statement = [transaction.to_dict() for transaction in transaction_list]
+    except GetStatementException:
+        return jsonify({
+            'status': 'error',
+            'message': f"Something went wrong while retrieving bank statement for account {account_id}."
+        }), 500
     return jsonify({
         "status": "success",
-        "message": f"The bank statement was successfully extracted for account {account_id}",
+        "message": f"The bank statement was successfully extracted for account {account_id}.",
         "bank_statement": statement
     })
 
@@ -182,7 +187,7 @@ def acc_statement():
 def resource_not_found(e):
     return jsonify({
         'status': 'error',
-        'message': str(e)
+        'message': "The page you were looking for was not found. Check the URL and try again."
     }), 404
 
 
@@ -190,7 +195,7 @@ def resource_not_found(e):
 def internal_server_error(e):
     return jsonify({
         'status': 'error',
-        'message': str(e)
+        'message': "Internal Server Error. Please try again later."
     }), 500
 
 
@@ -198,5 +203,5 @@ def internal_server_error(e):
 def bad_request(e):
     return jsonify({
         'status': 'error',
-        'message': str(e)
+        'message': "Bad Request. Please check your request and try again."
     }), 400
