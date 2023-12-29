@@ -72,7 +72,6 @@ class SQLAlchemyDBService(DBInterface):
             session.close()
 
     def create_new_person(self, new_person: Person) -> Person:
-        # TODO: Give this function a route and refactor this code to use the same pattern as the create_new_account
         new_row = {key: item for key, item in new_person.to_dict().items() if item is not None}
 
         session = self.Session()
@@ -80,7 +79,10 @@ class SQLAlchemyDBService(DBInterface):
             insert_row = insert(self.pessoa_table)
             session.execute(insert_row, new_row)
             session.commit()
-            return new_person
+
+            new_person_id = session.query(self.pessoa_table.c.id_pessoa).filter_by(cpf=new_person.cpf).scalar()
+            new_row['id_pessoa'] = new_person_id
+            return Person.from_dict(new_row)
         except sqlalchemy.exc.SQLAlchemyError as e:
             raise PersonCreationException(e)
         finally:
