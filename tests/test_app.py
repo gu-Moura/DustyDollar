@@ -7,7 +7,7 @@ from src.app import app
 import json
 
 from src.exceptions import AccountRetrievalException, AccountCreationException, DepositOperationException, \
-    WithdrawalOperationException
+    WithdrawalOperationException, GetBalanceException, GetStatementException
 from tests.utils.mock_db_interface import MockDBInterface
 
 
@@ -248,3 +248,91 @@ class TestApp(unittest.TestCase):
                 'status': 'success',
                 'message': 'Account 1 was successfully unblocked.'
             }, response.get_json())
+
+    @patch('src.app.db_interface', MockDBInterface())
+    @patch('src.app.db_interface.check_account_active', Mock(return_value=True))
+    def test_acc_balance(self):
+        with app.app_context():
+            response = self.test_client.get('/account/balance', query_string={
+                'account_id': 1,
+            }, headers={
+                'Authorization': f'Bearer {create_access_token(identity="pytest")}'
+            })
+            self.assertEqual(200, response.status_code)
+            self.assertDictEqual({
+                'status': 'success',
+                'message': 'Balance of account 1 was retrieved successfully.',
+                'balance': 100.0
+            }, response.get_json())
+
+    @patch('src.app.db_interface.check_account_active', Mock(return_value=True))
+    @patch('src.app.db_interface.get_balance', Mock(side_effect=GetBalanceException("Mock Exception")))
+    def test_acc_balance_exception(self):
+        with app.app_context():
+            response = self.test_client.get('/account/balance', query_string={
+                'account_id': 1,
+            }, headers={
+                'Authorization': f'Bearer {create_access_token(identity="pytest")}'
+            })
+            self.assertEqual(500, response.status_code)
+            self.assertDictEqual({
+                'status': 'error',
+                'message': "Something went wrong while retrieving balance for account 1."
+            }, response.get_json())
+
+    @patch('src.app.db_interface', MockDBInterface())
+    @patch('src.app.db_interface.check_account_active', Mock(return_value=True))
+    def test_acc_statement(self):
+        with app.app_context():
+            response = self.test_client.get('/account/statement', query_string={
+                'account_id': 1,
+            }, headers={
+                'Authorization': f'Bearer {create_access_token(identity="pytest")}'
+            })
+            json_response = response.get_json()
+            self.assertEqual(200, response.status_code)
+            self.assertEqual('success', json_response.get('status') )
+            self.assertEqual('The bank statement was successfully extracted for account 1.', json_response.get('message'))
+            self.assertListEqual([
+                {
+                    'id_transacao': 1,
+                    'id_conta': 1,
+                    'valor': 103.52,
+                    'data_transacao': '2023-12-12'
+                },
+                {
+                    'id_transacao': 2,
+                    'id_conta': 1,
+                    'valor': 128.98,
+                    'data_transacao': '2023-12-15'
+                }
+            ], json_response.get('bank_statement'))
+
+    @patch('src.app.db_interface.check_account_active', Mock(return_value=True))
+    def test_acc_statement_no_account_id(self):
+        with app.app_context():
+            response = self.test_client.get('/account/statement', headers={
+                'Authorization': f'Bearer {create_access_token(identity="pytest")}'
+            })
+            json_response = response.get_json()
+            self.assertEqual(400, response.status_code)
+            self.assertDictEqual({
+                'status': 'error',
+                'message': 'No account_id provided.'
+            }, json_response)
+
+    @patch('src.app.db_interface.check_account_active', Mock(return_value=True))
+    @patch('src.app.db_interface.get_statement_from_account', Mock(side_effect=GetStatementException("Mock Exception")))
+    def test_acc_statement_exception(self):
+        with app.app_context():
+            response = self.test_client.get('/account/statement', query_string={
+                'account_id': 1,
+            }, headers={
+                'Authorization': f'Bearer {create_access_token(identity="pytest")}'
+            })
+            json_response = response.get_json()
+            self.assertEqual(500, response.status_code)
+            self.assertDictEqual({
+                'status': 'error',
+                'message': f"Something went wrong while retrieving bank statement for account 1."
+            }, json_response)
