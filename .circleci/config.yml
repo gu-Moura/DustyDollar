@@ -1,0 +1,39 @@
+version: 2.1
+jobs:
+  build_and_test:
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - checkout
+      - run:
+          name: "Install requirements"
+          command: |
+            sudo apt-get update -y
+            sudo apt-get install -y python3-pip
+            pip install -r requirements.txt -r test-requirements.txt
+      - run:
+          name: "Install SonarCloud"
+          command: |
+            sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 379CE192D401AB61
+            echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
+            sudo apt-get update -y
+            sudo apt-get install -y sbt
+            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-5.0.1.3006-linux.zip
+            unzip sonar-scanner-cli-5.0.1.3006-linux.zip
+            export PATH=$PATH:$PWD/sonar-scanner-4.6.0.2311-linux/bin
+            sonar-scanner --version
+      - run:
+          name: "Run tests with coverage"
+          command: |
+            pip install -r requirements.txt -r test-requirements.txt
+            coverage run -m pytest
+            coverage xml
+      - run:
+          name: "SonarCloud scan"
+          command: sonar-scanner -Dsonar.projectKeygu-Moura_DustyDollar -Dsonar.organization=gu-moura -Dsonar.sources=src -Dsonar.tests=tests -Dsonar.python.coverage.reportPaths=coverage.xml
+            
+
+workflows:
+  deploy-workflow:
+    jobs:
+      - build_and_test
