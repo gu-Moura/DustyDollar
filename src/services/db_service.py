@@ -1,10 +1,15 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Union, List, Optional, Tuple
 
+import sqlalchemy
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, Date, DECIMAL, Table, MetaData, Text, insert, \
     func, Engine
 from sqlalchemy.orm import sessionmaker, Session
 
+from src.exceptions import DepositOperationException, TransactionCreationException, WithdrawalOperationException, \
+    AccountCreationException, PersonCreationException, AccountStatusChangeException, GetBalanceException, \
+    GetStatementException, AccountStatusCheckException, WithdrawalLimitCheckException, AccountRetrievalException, \
+    AccountRetrievalException
 from src.models.entities import Account, Transaction, Person
 from src.services.ports.db_interface import DBInterface
 
@@ -48,141 +53,201 @@ class SQLAlchemyDBService(DBInterface):
 
         return engine, _sessionmaker
 
-    def create_new_account(self, new_account: Account, password: str):
-        new_row = new_account.to_dict()
-        for key, item in new_row.copy().items():
-            if item is None:
-                new_row.pop(key)
-        new_row['senha'] = password
+    def create_new_account(self, new_account: Account, password: str) -> Account:
+        new_row = {key: item for key, item in new_account.to_dict().items() if item is not None}
+        new_row.update(senha=password)
 
         session = self.Session()
-        insert_row = insert(self.conta_table)
-        session.execute(insert_row, new_row)
-        session.commit()
-        session.close()
+        try:
+            insert_row = insert(self.conta_table)
+            session.execute(insert_row, new_row)
+            session.commit()
 
-    def create_new_person(self, new_person: Person):
-        new_row = new_person.to_dict()
-        for key, item in new_row.copy().items():
-            if not item:
-                new_row.pop(key)
+            new_account_id = session.query(self.conta_table.c.id_conta).filter_by(senha=password).scalar()
+            new_row['id_conta'] = new_account_id
+            return Account.from_dict(new_row)
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise AccountCreationException(e)
+        finally:
+            session.close()
+
+    def create_new_person(self, new_person: Person) -> Person:
+        new_row = {key: item for key, item in new_person.to_dict().items() if item is not None}
 
         session = self.Session()
-        insert_row = insert(self.pessoa_table)
-        session.execute(insert_row, new_row)
-        session.commit()
-        session.close()
+        try:
+            insert_row = insert(self.pessoa_table)
+            session.execute(insert_row, new_row)
+            session.commit()
 
-    def deposit_into_account(self, account_id: int, amount: float):
+            new_person_id = session.query(self.pessoa_table.c.id_pessoa).filter_by(cpf=new_person.cpf).scalar()
+            new_row['id_pessoa'] = new_person_id
+            return Person.from_dict(new_row)
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise PersonCreationException(e)
+        finally:
+            session.close()
+
+    def deposit_into_account(self, account_id: int, amount: float) -> Transaction:
         session = self.Session()
+        try:
+            session.execute(
+                self.conta_table.update()
+                .where(self.conta_table.c.id_conta == account_id)
+                .values(saldo=self.conta_table.c.saldo + abs(amount))
+            )
+            session.commit()
+            return self._make_transaction(account_id, abs(amount), datetime.now().date())
+        except TransactionCreationException as e:
+            session.execute(
+                self.conta_table.update()
+                .where(self.conta_table.c.id_conta == account_id)
+                .values(saldo=self.conta_table.c.saldo - abs(amount))
+            )
+            session.commit()
+            raise DepositOperationException(e)
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise DepositOperationException(e)
+        finally:
+            session.close()
 
-        session.execute(
-            self.conta_table.update()
-            .where(self.conta_table.c.id_conta == account_id)
-            .values(saldo=self.conta_table.c.saldo + abs(amount))
-        )
+    def withdraw_from_account(self, account_id: int, amount: float) -> Transaction:
+        session = self.Session()
+        try:
+            session.execute(
+                self.conta_table.update()
+                .where(self.conta_table.c.id_conta == account_id)
+                .values(saldo=self.conta_table.c.saldo - abs(amount))
+            )
 
-        session.commit()
-        session.close()
+            return self._make_transaction(account_id, -abs(amount), datetime.now().date())
+        except TransactionCreationException as e:
+            session.execute(
+                self.conta_table.update()
+                .where(self.conta_table.c.id_conta == account_id)
+                .values(saldo=self.conta_table.c.saldo + abs(amount))
+            )
+            session.commit()
+            raise DepositOperationException(e)
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise DepositOperationException(e)
+        finally:
+            session.commit()
+            session.close()
 
     def get_balance(self, account_id: int) -> Union[float, None]:
         session = self.Session()
-        saldo = session.query(self.conta_table.c.saldo).filter_by(id_conta=account_id).scalar()
-        current_balance = saldo if saldo is not None else None
-        session.close()
-        return current_balance
+        try:
+            saldo = (session.query(self.conta_table.c.saldo)
+                     .filter_by(id_conta=account_id).scalar())
+            return saldo if saldo is not None else None
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise GetBalanceException(e)
+        finally:
+            session.close()
 
-    def withdraw_from_account(self, account_id: int, amount: float):
+    def set_account_active_status(self, account_id: int, active: bool) -> bool:
         session = self.Session()
-        session.execute(
-            self.conta_table.update()
-            .where(self.conta_table.c.id_conta == account_id)
-            .values(saldo=self.conta_table.c.saldo - abs(amount))
-        )
-        session.commit()
-        session.close()
+        try:
+            session.execute(
+                self.conta_table.update()
+                .where(self.conta_table.c.id_conta == account_id)
+                .values(flag_ativo=active)
+            )
+            session.commit()
+            return self.check_account_active(account_id)
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise AccountStatusChangeException(e)
+        finally:
+            session.close()
 
-    def change_account_active_status(self, account_id: int, active: bool):
-        session = self.Session()
-        session.execute(
-            self.conta_table.update()
-            .where(self.conta_table.c.id_conta == account_id)
-            .values(flag_ativo=active)
-        )
-        session.commit()
-        session.close()
-
-    def get_extract_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
+    def get_statement_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
         since_day = datetime.now() - timedelta(days=days)
         session = self.Session()
-        result = (session.query(self.transactions_table)
-                  .filter(self.transactions_table.c.id_conta == account_id,
-                          self.transactions_table.c.data_transacao >= since_day).all())
-        session.close()
-        extract = [Transaction.from_dict(dict(
-            id_transacao=row[0],
-            id_conta=row[1],
-            valor=row[2],
-            data_transacao=row[3].strftime('%Y-%m-%d')
-        )) for row in result]
-        return extract
+        try:
+            result = (session.query(self.transactions_table)
+                      .filter(self.transactions_table.c.id_conta == account_id,
+                              self.transactions_table.c.data_transacao >= since_day).all())
+            extract = [Transaction.from_dict(dict(
+                id_transacao=row[0],
+                id_conta=row[1],
+                valor=row[2],
+                data_transacao=row[3].strftime('%Y-%m-%d')
+            )) for row in result]
+            return extract
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise GetStatementException(e)
+        finally:
+            session.close()
 
-    def make_transaction(self, account_id: int, amount: float) -> Transaction:
-        session = self.Session()
-        transaction = {
+    def _make_transaction(self, account_id: int, amount: float, transaction_date: date) -> Transaction:
+        new_transaction = {
             "id_conta": account_id,
             "valor": amount,
-            "data_transacao": datetime.now().strftime("%Y-%m-%d")
+            "data_transacao": transaction_date.strftime("%Y-%m-%d")
         }
-
-        insert_row = insert(self.transactions_table)
-        result = session.execute(insert_row, transaction)
-        session.commit()
-        session.close()
+        session = self.Session()
+        try:
+            insert_row = insert(self.transactions_table)
+            result = session.execute(insert_row, new_transaction)
+            session.commit()
+        except Exception as e:
+            raise TransactionCreationException(e)
+        finally:
+            session.close()
 
         completed_transaction = {
-            **transaction,
+            **new_transaction,
             'id_transacao': result.inserted_primary_key[0]
         }
         return Transaction.from_dict(completed_transaction)
 
-    def check_account_active(self, account_id: int) -> Optional[bool]:
+    def check_account_active(self, account_id: int) -> bool:
         session = self.Session()
-        account_active = session.query(self.conta_table.c.flag_ativo).filter_by(id_conta=account_id).scalar()
-        session.close()
-        if account_active is None:
-            return None
-        return account_active
+        try:
+            account_active = session.query(self.conta_table.c.flag_ativo).filter_by(id_conta=account_id).scalar()
+            return bool(account_active)
+        except sqlalchemy.exc.SQLAlchemyError as e:
+            raise AccountStatusCheckException(e)
+        finally:
+            session.close()
 
     def reached_withdrawal_limit(self, account_id: int, withdrawal_amount: float) -> bool:
         session = self.Session()
-        withdrawal_limit = (session.query(self.conta_table.c.limite_saque_diario)
-                            .filter_by(id_conta=account_id)
-                            .scalar())
-        total_withdrawn = (session.query(func.sum(func.abs(self.transactions_table.c.valor)))
-                           .filter(self.transactions_table.c.id_conta == account_id,
-                                   self.transactions_table.c.valor < 0.0,
-                                   self.transactions_table.c.data_transacao == datetime.now().date().strftime(
-                                       '%Y-%m-%d'))
-                           .scalar()
-                           ) or 0.0
-        session.close()
-        return True if (total_withdrawn + withdrawal_amount) > withdrawal_limit else False
+        try:
+            withdrawal_limit = (session.query(self.conta_table.c.limite_saque_diario)
+                                .filter_by(id_conta=account_id)
+                                .scalar())
+            total_withdrawn = (session.query(func.sum(func.abs(self.transactions_table.c.valor)))
+                               .filter(self.transactions_table.c.id_conta == account_id,
+                                       self.transactions_table.c.valor < 0.0,
+                                       self.transactions_table.c.data_transacao == datetime.now().date().strftime(
+                                           '%Y-%m-%d'))
+                               .scalar()
+                               )
+            return True if (total_withdrawn + withdrawal_amount) > withdrawal_limit else False
+        except (sqlalchemy.exc.SQLAlchemyError, TypeError) as e:
+            raise WithdrawalLimitCheckException(e)
+        finally:
+            session.close()
 
-    def get_account(self, account_id: int) -> Tuple[Account, str] | Tuple[None, None]:
+    def get_account(self, account_id: int) -> Tuple[Account, str]:
         session = self.Session()
-        result = session.query(self.conta_table).filter_by(id_conta=account_id).first()
-        session.close()
+        try:
+            result = session.query(self.conta_table).filter_by(id_conta=account_id).first()
+            if result is None:
+                raise AccountRetrievalException("Account not found!")
 
-        if result is None:
-            return None, None
-
-        return Account.from_dict(dict(
-            id_conta=result[0],
-            id_pessoa=result[1],
-            saldo=result[2],
-            limite_saque_diario=result[3],
-            flag_ativo=result[4],
-            tipo_conta=result[5],
-            data_criacao=result[6].strftime('%Y-%m-%d')
-        )), result[7]  # result[7] is the store password hash
+            return Account.from_dict(dict(
+                id_conta=result[0],
+                id_pessoa=result[1],
+                saldo=result[2],
+                limite_saque_diario=result[3],
+                flag_ativo=result[4],
+                tipo_conta=result[5],
+                data_criacao=result[6].strftime('%Y-%m-%d')
+            )), result[7]  # result[7] is the store password hash
+        except (sqlalchemy.exc.SQLAlchemyError, TypeError) as e:
+            raise AccountRetrievalException(e)
+        finally:
+            session.close()

@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from datetime import date
 from typing import Union, List, Optional
 
 from src.models.entities import Account, Person, Transaction
@@ -26,15 +27,15 @@ class DBInterface(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def change_account_active_status(self, account_id: int, active: bool):
+    def set_account_active_status(self, account_id: int, active: bool):
         raise NotImplementedError
 
     @abstractmethod
-    def get_extract_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
+    def get_statement_from_account(self, account_id: int, days: int = 30) -> List[Transaction]:
         raise NotImplementedError
 
     @abstractmethod
-    def make_transaction(self, account_id: int, amount: float) -> Transaction:
+    def _make_transaction(self, account_id: int, amount: float, transaction_date: date) -> Transaction:
         raise NotImplementedError
 
     @abstractmethod

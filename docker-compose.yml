@@ -9,7 +9,7 @@ services:
       - database
     restart: on-failure
     env_file:
-      - .env.dev
+      - .env.staging
     ports:
       - "5000:5000"
     volumes:
@@ -20,7 +20,7 @@ services:
   database:
     image: mysql:8.0-debian
     env_file:
-      - .env.dev
+      - .env.staging
     ports:
       - "3306:3306"
     volumes:

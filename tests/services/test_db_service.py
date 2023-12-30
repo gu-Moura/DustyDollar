@@ -142,7 +142,7 @@ class MyTestCase(unittest.TestCase):
 
         self.mock_sqla.conta_table.c.id_conta = account_id
 
-        self.mock_sqla.change_account_active_status(account_id, active)
+        self.mock_sqla.set_account_active_status(account_id, active)
 
         # Asserts
         self.mock_sqla.conta_table.update.return_value.where.assert_called_once_with(True)
@@ -154,7 +154,7 @@ class MyTestCase(unittest.TestCase):
         self.session_mock.commit.assert_called_once()
         self.session_mock.close.assert_called_once()
 
-    def test_get_extract_from_account(self):
+    def test_get_statement_from_account(self):
         expected_account_id = 12321
         days_prior = 30
         expected_since_day = datetime.now() - timedelta(days=days_prior)
@@ -171,7 +171,7 @@ class MyTestCase(unittest.TestCase):
         self.session_mock.query.return_value.filter.return_value.all.return_value = expected_rows
         self.mock_sqla.transactions_table.c.data_transacao = datetime(year=2023, month=12, day=12)
 
-        statement = self.mock_sqla.get_extract_from_account(account_id=12321, days=30)
+        statement = self.mock_sqla.get_statement_from_account(account_id=12321, days=30)
 
         # Asserts
         self.mock_sqla.Session.assert_called()

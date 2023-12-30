@@ -275,17 +275,17 @@ class TestEntities(unittest.TestCase):
     def test_account_status_dto_from_dict(self):
         account_status_dict = {
             "account_id": 1,
-            "account_active": True
+            "active": True
         }
         account_status_dto = entities.AccountStatusDTO.from_dict(account_status_dict)
         self.assertEqual(type(account_status_dto), entities.AccountStatusDTO)
         self.assertEqual(account_status_dto.account_id, 1)
-        self.assertEqual(account_status_dto.account_active, True)
+        self.assertEqual(account_status_dto.active, True)
 
     def test_account_status_dto_to_dict(self):
         account_status_dict = {
             "account_id": 1,
-            "account_active": True
+            "active": True
         }
         account_status_dto = entities.AccountStatusDTO.from_dict(account_status_dict)
         self.assertDictEqual(account_status_dto.to_dict(), account_status_dict)
@@ -293,6 +293,6 @@ class TestEntities(unittest.TestCase):
     def test_account_status_dto_from_dict_invalid_data_exception(self):
         account_status_dict = {
             "account_id": "One",
-            "account_active": True
+            "active": True
         }
         self.assertRaises(ValueError, entities.AccountStatusDTO.from_dict, account_status_dict)
